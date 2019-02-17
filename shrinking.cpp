@@ -55,39 +55,54 @@ int buildInput(unsigned char ***sourceImageData, int* inputArr, int height, int 
 
 int filterOne(int X, int *inputArr, int *intermediateArr)
 {
-	int M = 1;
+	int maskMatch = 0;
     if (X == 1)
     {
         for (int msk = 0; msk < NUM_COND_MASKS; msk++)
         {
-            int maskMatch = 1;
+            int thisMaskMatch = 1;
             for (int i = 0; i < 8; i++)
             {
-                int boolOp = 0;
-                if(condSMasks[msk][i] == 1)
+				// if match, continue comparing
+                if (*(inputArr + i) != condSMasks[msk][i])
                 {
-                    boolOp = *(inputArr + i) & condSMasks[msk][i];
-                    maskMatch &= boolOp;
+					thisMaskMatch = 0;
+					break;
                 }
-                *(intermediateArr + i) |= boolOp; 
-                M |= maskMatch;
             }
+			// if this mask is a hit, then register with overall hit tracker
+            maskMatch |= thisMaskMatch;
+			// if mask hit, throw into intermediate array
+			if (thisMaskMatch)
+				for (int i = 0; i< 8; i++)
+					*(intermediateArr + i) |= *(inputArr + i); // throw matched 1s in intermediate array
         }	
     }
-	return M;	
+	return maskMatch;	
 }
 
-int filterTwo(int *intermediateArr)
+int filterTwo(int M, int *intermediateArr)
 {
-	int P = 1;
-	for (int msk = 0; msk < NUM_COND_MASKS; msk++)
-	{
-		for (int i = 0; i < 8; i++)
-		{
-			P &= *(intermediateArr + i) & uncondSTMasks[msk][i];
-		}
-	}
-	return P;		
+	int maskMatch = 0;
+    if (M == 1)
+    {
+        for (int msk = 0; msk < NUM_UNCOND_MASKS; msk++)
+        {
+            int thisMaskMatch = 1;
+            for (int i = 0; i < 8; i++)
+            {
+				// if match, continue comparing
+                if (*(intermediateArr + i) != uncondSTMasks[msk][i])
+                {
+					thisMaskMatch = 0;
+					break;
+                }
+            }
+			// if this mask is a hit, then register with overall hit tracker
+            maskMatch |= thisMaskMatch;
+        }	
+    }
+	return maskMatch;				
 }
 int main(int argc, char *argv[])
 {
@@ -149,14 +164,11 @@ int main(int argc, char *argv[])
 			int M = filterOne(X, input, intermediate);
 
 			// run intermediate array through 2nd filter
-			int P = filterTwo(intermediate);
+			int P = filterTwo(M, intermediate);
 
 			// calculate output
 			if (X && (!M || P)) destImageData[i][j][0] = 255;
-			else destImageData[i][j][0] = 0;
-
-            if (X == 1)
-                printf("X : M : P = %d : %d : %d\n", X, M, P);
+			else destImageData[i][j][0] = 0;;
 		}
 	}
 
