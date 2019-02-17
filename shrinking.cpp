@@ -30,36 +30,50 @@ int zeroPadX(int width, int j, int nw)
 		return 0;
 }
 
-void buildInput(unsigned char ***sourceImageData, int* inputArr, int height, int width, int i, int j)
+int buildInput(unsigned char ***sourceImageData, int* inputArr, int height, int width, int i, int j)
 {
-	int index = 0;
-	for (int nh = -1; nh <= 1; nh++)
-	{
-		for (int nw = -1; nw <= 1; nw++)
-		{
-			unsigned char pixel = *(((unsigned char *)sourceImageData + zeroPadY(height, i, nh)*width) + zeroPadX(width, j, nw));
-			if ((nh != 0) && (nw != 0))
-			{	
-				if (pixel > 0) *(inputArr + index) = 1;
-				else *(inputArr + index) = 0;
-				index++;				
-			}
-		}
-	}
+    unsigned char pixels[9] = {0};
+    pixels[0] = *(((unsigned char *)sourceImageData + zeroPadY(height, i, 0)*width) + zeroPadX(width, j, 1));
+    pixels[1] = *(((unsigned char *)sourceImageData + zeroPadY(height, i, -1)*width) + zeroPadX(width, j, 1));
+    pixels[2] = *(((unsigned char *)sourceImageData + zeroPadY(height, i, -1)*width) + zeroPadX(width, j, 0));
+    pixels[3] = *(((unsigned char *)sourceImageData + zeroPadY(height, i, -1)*width) + zeroPadX(width, j, -1));
+    pixels[4] = *(((unsigned char *)sourceImageData + zeroPadY(height, i, 0)*width) + zeroPadX(width, j, -1));
+    pixels[5] = *(((unsigned char *)sourceImageData + zeroPadY(height, i, 1)*width) + zeroPadX(width, j, -1));
+    pixels[6] = *(((unsigned char *)sourceImageData + zeroPadY(height, i, 1)*width) + zeroPadX(width, j, 0));
+    pixels[7] = *(((unsigned char *)sourceImageData + zeroPadY(height, i, 1)*width) + zeroPadX(width, j, 1));
+    pixels[8] = *(((unsigned char *)sourceImageData + zeroPadY(height, i, 0)*width) + zeroPadX(width, j, 0));
+
+    for (int i = 0; i < 8; i++)
+    {	
+        if (pixels[i] > 0) *(inputArr + i) = 1;
+        else *(inputArr + i) = 0;			
+    }
+    if (pixels[8] > 0) return 1;
+    else return 0;
+
 }
 
-int filterOne(int *inputArr, int *intermediateArr)
+int filterOne(int X, int *inputArr, int *intermediateArr)
 {
 	int M = 1;
-	for (int msk = 0; msk < NUM_COND_MASKS; msk++)
-	{
-		for (int i = 0; i < 8; i++)
-		{
-			int boolOp = *(inputArr + i) & condSMasks[msk][i];
-			*(intermediateArr + i) |= boolOp; 
-			M &= boolOp;
-		}
-	}	
+    if (X == 1)
+    {
+        for (int msk = 0; msk < NUM_COND_MASKS; msk++)
+        {
+            int maskMatch = 1;
+            for (int i = 0; i < 8; i++)
+            {
+                int boolOp = 0;
+                if(condSMasks[msk][i] == 1)
+                {
+                    boolOp = *(inputArr + i) & condSMasks[msk][i];
+                    maskMatch &= boolOp;
+                }
+                *(intermediateArr + i) |= boolOp; 
+                M |= maskMatch;
+            }
+        }	
+    }
 	return M;	
 }
 
@@ -104,7 +118,6 @@ int main(int argc, char *argv[])
 	if (argc < 6) height = 256;
 	else height = atoi(argv[5]);
 	
-	
 	// Allocate source image data array
 	unsigned char sourceImageData[height][width][BytesPerPixel];
 	// Allocate dest image data array
@@ -122,20 +135,18 @@ int main(int argc, char *argv[])
 	///////////////////////// INSERT YOUR PROCESSING CODE HERE /////////////////////////
 	//intermediate array to hold output of first filter
 	
-	int input[9] = {0};
-	int intermediate[9] = {0};
+	int input[8] = {0};
+	int intermediate[8] = {0};
 	
 	for (int i = 0; i < height; i++)
 	{
 		for (int j = 0; j < width; j++)
 		{
 			// center pixel to be changed
-			int X = (int)sourceImageData[i][j][0];
-			// built input array
-			buildInput((unsigned char ***)sourceImageData, input, height, width, i, j);
+			int X = buildInput((unsigned char ***)sourceImageData, input, height, width, i, j);			
 
 			// run input through first filter and build intermediate array
-			int M = filterOne(input, intermediate);
+			int M = filterOne(X, input, intermediate);
 
 			// run intermediate array through 2nd filter
 			int P = filterTwo(intermediate);
@@ -143,6 +154,9 @@ int main(int argc, char *argv[])
 			// calculate output
 			if (X && (!M || P)) destImageData[i][j][0] = 255;
 			else destImageData[i][j][0] = 0;
+
+            if (X == 1)
+                printf("X : M : P = %d : %d : %d\n", X, M, P);
 		}
 	}
 
@@ -153,7 +167,7 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-	fwrite(destImageData, sizeof(unsigned char), height*width, file);
+	fwrite(destImageData, sizeof(unsigned char), height*width*BytesPerPixel, file);
 	fclose(file);
 
 	return 0;
