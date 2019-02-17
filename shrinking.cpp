@@ -1,52 +1,78 @@
-// This sample code reads in image data from a RAW image file and 
-// writes it into another file
-
-// NOTE:	The code assumes that the image is of width 256 x 256 and is in the
-//			RAW format. You will need to make corresponding changes to
-//			accommodate images of different widths and/or types
-
-#include <stdio.h>
-#include <iostream>
-#include <stdlib.h>
-#include <math.h>
+#include "shrinking.hpp"
 
 using namespace std;
 
-// hit masks
-const char *SB1_1 = "01000000";
-const char *SB1_2 = "00010000";
-const char *SB1_3 = "00000100";
-const char *SB1_4 = "00000001";
 
-const char *SB2_1 = "10000000";
-const char *SB2_2 = "00100000";
-const char *SB2_3 = "00001000";
-const char *SB2_4 = "00000010";
+int zeroPadY(int height, int i, int nh)
+{
+	if(i + nh >= 0)
+	{
+		if (i + nh < height - 1)
+			return i + nh;
+		else
+			return 0;
+	}
+	else
+		return 0;
+}
+int zeroPadX(int width, int j, int nw)
+{
+	if(j + nw >= 0)
+	{
+		if (j + nw < width - 1)
+			return j + nw;
+		else
+			return 0;
+	}
+	else
+		return 0;
+}
 
+void buildInput(unsigned char ***sourceImageData, int* inputArr, int height, int width, int i, int j)
+{
+	int index = 0;
+	for (int nh = -1; nh <= 1; nh++)
+	{
+		for (int nw = -1; nw <= 1; nw++)
+		{
+			unsigned char pixel = *(((unsigned char *)sourceImageData + zeroPadY(height, i, nh)*width) + zeroPadX(width, j, nw));
+			if ((nh != 0) && (nw != 0))
+			{	
+				if (pixel == 255) *(inputArr + index) = 1;
+				else *(inputArr + index) = 0;
+				index++;				
+			}
+		}
+	}
+}
 
+int filterOne(int *inputArr, int *intermediateArr)
+{
+	int M = 1;
+	for (int msk = 0; msk < NUM_COND_MASKS; msk++)
+	{
+		for (int i = 0; i < 8; i++)
+		{
+			int boolOp = *(inputArr + i) & condSMasks[msk][i];
+			*(intermediateArr + i) |= boolOp; 
+			M &= boolOp;
+		}
+	}	
+	return M;	
+}
 
-// void diffuseErrorLeft(int ***errorMatrix, int height, int width, int i, int j, int N, int select, int sub)
-// {
-// 	for (int nh = -(N-1)/2; nh <= (N-1)/2; nh++)
-// 	{
-// 		for (int nw = -(N-1)/2; nw <= (N-1)/2; nw++)
-// 		{
-//             switch(select)
-//             {
-//                 case 1:
-// 			        *(((int *)errorMatrix + (i+nh)*width) + (j + nw)) += (FS[nh][(N-1)/2 - nw]/16.0) * (*(((int *)errorMatrix + (i)*width) + (j)) - sub);
-//                 break;
-//                 case 2:
-// 			        *(((int *)errorMatrix + (i+nh)*width) + (j + nw)) += (JJN[nh][(N-1)/2 - nw]/48.0) * (*(((int *)errorMatrix + (i)*width) + (j)) - sub);
-//                 break;
-//                 case 3:
-// 			        *(((int *)errorMatrix + (i+nh)*width) + (j + nw)) += (STU[nh][(N-1)/2 - nw]/42.0) * (*(((int *)errorMatrix + (i)*width) + (j)) - sub);
-//                 break;
-//             }
-//         }    
-// 	}
-// }
-
+int filterTwo(int *intermediateArr)
+{
+	int P = 1;
+	for (int msk = 0; msk < NUM_COND_MASKS; msk++)
+	{
+		for (int i = 0; i < 8; i++)
+		{
+			P &= *(intermediateArr + i) & uncondSTMasks[msk][i];
+		}
+	}
+	return P;		
+}
 int main(int argc, char *argv[])
 {
 	// Define file pointer and variables
@@ -75,18 +101,8 @@ int main(int argc, char *argv[])
 	// check if height is specified
 	if (argc < 6) height = 256;
 	else height = atoi(argv[5]);
-
-	// check if I for index matrix is specified
-	if (argc < 7) select = 1;
-	else select = atoi(argv[6]);
-
-    // threshold
-    if (argc < 8) th = 127;
-	else th = atoi(argv[7]);
 	
 	
-    // int array to hold error diffusion data (2 rows and columns bigger to accomodate diffusion at edges)
-    int errDiff[height + 2][width + 2][BytesPerPixel];
 	// Allocate source image data array
 	unsigned char sourceImageData[height][width][BytesPerPixel];
 	// Allocate dest image data array
@@ -102,52 +118,32 @@ int main(int argc, char *argv[])
 	fclose(file);
 
 	///////////////////////// INSERT YOUR PROCESSING CODE HERE /////////////////////////
-    // change window size depending on the diff matrix we watnt to use
-    int N = 3;
-    switch(select)
-    {
-        case 2:
-            N = 5;
-        break;
-        case 3:
-            N = 5;
-        break;   
-    }
-    // compare pixels to threshold matrix and half-tone accordingly
+	//intermediate array to hold output of first filter
+	
+	int input[9] = {0};
+	int intermediate[9] = {0};
+	int M = 0;
+	int P = 0;
+	
 	for (int i = 0; i < height; i++)
 	{
-        if(i%2) // snake right
-        {
-            for (int j = 0; j < width; j++)
-            {
-                if(sourceImageData[i][j][0] + errDiff[i][j][0] > th)
-                {
-                    diffuseErrorRight((int ***)errDiff, height, width, i, j, N, select, 255);
-                    destImageData[i][j][0] = 255;   
-                }
-                else
-                {
-                    diffuseErrorRight((int ***)errDiff, height, width, i, j, N, select, 0);
-                    destImageData[i][j][0] = 0;   
-                }
-            }
-        }
-        else // snake left
-        {
-            for (int j = width - 1; j >= 0; j--)
-            {
-                if(sourceImageData[i][j][0] + errDiff[i][j][0] > th)
-                {
-                    diffuseErrorLeft((int ***)errDiff, height, width, i, j, N, select, 255);
-                    destImageData[i][j][0] = 255;   
-                }
-                else
-                {
-                    diffuseErrorLeft((int ***)errDiff, height, width, i, j, N, select, 0);
-                    destImageData[i][j][0] = 0;   
-                }
-            }
-        }
+		for (int j = 0; j < width; j++)
+		{
+			// center pixel to be changed
+			int X = (int)sourceImageData[i][j][0];
+			// built input array
+			buildInput((unsigned char ***)sourceImageData, input, height, width, i, j);
+
+			// run input through first filter and build intermediate array
+			int M = filterOne(input, intermediate);
+
+			// run intermediate array through 2nd filter
+			int P = filterTwo(intermediate);
+
+			// calculate output
+			if (X && (!M || P)) destImageData[i][j][0] = 255;
+			else destImageData[i][j][0] = 0;
+		}
 	}
 
 	// Write image data (filename specified by second argument) from image data matrix
