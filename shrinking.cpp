@@ -1,3 +1,5 @@
+// input: ./shrinking HW3_images/pattern1.raw HW3_images/pattern1-shrink.raw 1 375 375
+
 #include "shrinking.hpp"
 
 using namespace std;
