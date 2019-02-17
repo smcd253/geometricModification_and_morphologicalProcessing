@@ -40,7 +40,7 @@ void buildInput(unsigned char ***sourceImageData, int* inputArr, int height, int
 			unsigned char pixel = *(((unsigned char *)sourceImageData + zeroPadY(height, i, nh)*width) + zeroPadX(width, j, nw));
 			if ((nh != 0) && (nw != 0))
 			{	
-				if (pixel == 255) *(inputArr + index) = 1;
+				if (pixel > 0) *(inputArr + index) = 1;
 				else *(inputArr + index) = 0;
 				index++;				
 			}
@@ -124,8 +124,6 @@ int main(int argc, char *argv[])
 	
 	int input[9] = {0};
 	int intermediate[9] = {0};
-	int M = 0;
-	int P = 0;
 	
 	for (int i = 0; i < height; i++)
 	{
