@@ -25,9 +25,7 @@ int zeroPad(unsigned char ***sourceImageData, int height, int width, int i, int 
 			return 0;
 	}
 	else
-	{
 		return 0;
-	}
 }
 
 int buildInput(unsigned char ***sourceImageData, int* inputArr, int height, int width, int i, int j)
