@@ -5,43 +5,43 @@
 using namespace std;
 
 
-int zeroPadY(int height, int i, int nh)
+int zeroPad(unsigned char ***sourceImageData, int height, int width, int i, int j, int nh, int nw)
 {
 	if(i + nh >= 0)
 	{
 		if (i + nh < height - 1)
-			return i + nh;
+		{
+			if(j + nw >= 0)
+			{
+				if (j + nw < width - 1)
+					return *(((unsigned char *)sourceImageData + (i + nh)*width) + (j + nw));
+				else
+					return 0;
+			}
+			else
+				return 0;
+		}
 		else
 			return 0;
 	}
 	else
-		return 0;
-}
-int zeroPadX(int width, int j, int nw)
-{
-	if(j + nw >= 0)
 	{
-		if (j + nw < width - 1)
-			return j + nw;
-		else
-			return 0;
-	}
-	else
 		return 0;
+	}
 }
 
 int buildInput(unsigned char ***sourceImageData, int* inputArr, int height, int width, int i, int j)
 {
     unsigned char pixels[9] = {0};
-    pixels[0] = *(((unsigned char *)sourceImageData + zeroPadY(height, i, 0)*width) + zeroPadX(width, j, 1));
-    pixels[1] = *(((unsigned char *)sourceImageData + zeroPadY(height, i, -1)*width) + zeroPadX(width, j, 1));
-    pixels[2] = *(((unsigned char *)sourceImageData + zeroPadY(height, i, -1)*width) + zeroPadX(width, j, 0));
-    pixels[3] = *(((unsigned char *)sourceImageData + zeroPadY(height, i, -1)*width) + zeroPadX(width, j, -1));
-    pixels[4] = *(((unsigned char *)sourceImageData + zeroPadY(height, i, 0)*width) + zeroPadX(width, j, -1));
-    pixels[5] = *(((unsigned char *)sourceImageData + zeroPadY(height, i, 1)*width) + zeroPadX(width, j, -1));
-    pixels[6] = *(((unsigned char *)sourceImageData + zeroPadY(height, i, 1)*width) + zeroPadX(width, j, 0));
-    pixels[7] = *(((unsigned char *)sourceImageData + zeroPadY(height, i, 1)*width) + zeroPadX(width, j, 1));
-    pixels[8] = *(((unsigned char *)sourceImageData + zeroPadY(height, i, 0)*width) + zeroPadX(width, j, 0));
+	pixels[0] = zeroPad((unsigned char ***)sourceImageData, height, width, i, j, 0, 1);
+    pixels[1] = zeroPad((unsigned char ***)sourceImageData, height, width, i, j, -1, 1);
+    pixels[2] = zeroPad((unsigned char ***)sourceImageData, height, width, i, j, -1, 0);
+    pixels[3] = zeroPad((unsigned char ***)sourceImageData, height, width, i, j, -1, -1);
+    pixels[4] = zeroPad((unsigned char ***)sourceImageData, height, width, i, j, 0, -1);
+    pixels[5] = zeroPad((unsigned char ***)sourceImageData, height, width, i, j, 1, -1);
+    pixels[6] = zeroPad((unsigned char ***)sourceImageData, height, width, i, j, 1, 0);
+    pixels[7] = zeroPad((unsigned char ***)sourceImageData, height, width, i, j, 1, 1);
+    pixels[8] = zeroPad((unsigned char ***)sourceImageData, height, width, i, j, 0, 0);
 
     for (int i = 0; i < 8; i++)
     {	
@@ -63,7 +63,7 @@ int filterOne(int X, int *inputArr, int *intermediateArr)
             int thisMaskMatch = 1;
             for (int i = 0; i < 8; i++)
             {
-				// if match, continue comparing
+				// if no match, break and compare to next mask
                 if (*(inputArr + i) != condSMasks[msk][i])
                 {
 					thisMaskMatch = 0;
@@ -72,10 +72,19 @@ int filterOne(int X, int *inputArr, int *intermediateArr)
             }
 			// if this mask is a hit, then register with overall hit tracker
             maskMatch |= thisMaskMatch;
+
 			// if mask hit, throw into intermediate array
 			if (thisMaskMatch)
+			{
+				printf("intermediateArr[] = {");
 				for (int i = 0; i< 8; i++)
-					*(intermediateArr + i) |= *(inputArr + i); // throw matched 1s in intermediate array
+				{
+					*(intermediateArr + i) = *(inputArr + i); // throw matched 1s in intermediate array
+					printf("%d,", *(intermediateArr + i));
+				}
+				printf("}\n");
+
+			}
         }	
     }
 	return maskMatch;	
