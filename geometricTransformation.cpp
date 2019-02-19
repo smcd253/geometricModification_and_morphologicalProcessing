@@ -1,9 +1,22 @@
-// input: ./shrinking HW3_images/pattern1.raw HW3_images/pattern1-shrink.raw 1 375 375
+// input: ./shrinking HW3_images/lighthouse.raw HW3_images/lighthouse1.raw HW3_images/lighthouseCombined.raw
 
 #include "geometricModification.hpp"
 
 using namespace std;
 
+void findHole(unsigned char ***sourceImageData, unsigned char **destImageData, int height, int width)
+{
+	for (int j = 0; j < width; j++)
+	{
+		for (int i = 0; i < height; i++)
+		{
+			while (*(((unsigned char *)sourceImageData + i * width) + j) == 255)
+			{
+
+			}
+		}
+	}
+}
 
 int main(int argc, char *argv[])
 {
@@ -11,8 +24,8 @@ int main(int argc, char *argv[])
 	FILE *file;
 	int BytesPerPixel;
 	int width, height;
-	int select;
-    int th;
+	int childA_height = 256;
+	int childA_width = 256;
 	
 	// Check for proper syntax
 	if (argc < 3)
@@ -27,49 +40,55 @@ int main(int argc, char *argv[])
 	else BytesPerPixel = atoi(argv[3]);
 
 	// Check if width is specified
-	if (argc < 5) width = 256;
+	if (argc < 5) width = 512;
 	else width = atoi(argv[4]);
 
 	// check if height is specified
-	if (argc < 6) height = 256;
+	if (argc < 6) height = 512;
 	else height = atoi(argv[5]);
 	
-	// Allocate source image data array
-	unsigned char sourceImageData[height][width][BytesPerPixel];
+	// Allocate child image data array
+	unsigned char childA_imageData[childA_height][childA_width][BytesPerPixel];
+	// Allocate parent image data arrray
+	unsigned char parentImageData[height][width][BytesPerPixel];
 	// Allocate dest image data array
-	unsigned char destImageData[height][width][1];
+	unsigned char destImageData[height][width][BytesPerPixel];
 
-	// Read image (filename specified by first argument) into image data matrix
+	// Read parent image (filename specified by first argument) into image data matrix
 	if (!(file=fopen(argv[1],"rb"))) 
 	{
-		cout << "Cannot open file: " << argv[1] <<endl;
+		cout << "Cannot open parent file: " << argv[1] <<endl;
 		exit(1);
 	}
-	fread(sourceImageData, sizeof(unsigned char), height*width*BytesPerPixel, file);
+	fread(parentImageData, sizeof(unsigned char), height*width*BytesPerPixel, file);
+	fclose(file);
+
+	// Read child image (filename specified by first argument) into image data matrix
+	if (!(file=fopen(argv[2],"rb"))) 
+	{
+		cout << "Cannot open child (a) file: " << argv[1] <<endl;
+		exit(1);
+	}
+	fread(childA_imageData, sizeof(unsigned char), childA_height*childA_width*BytesPerPixel, file);
 	fclose(file);
 
 	///////////////////////// INSERT YOUR PROCESSING CODE HERE /////////////////////////
-	//intermediate array to hold output of first filter
+	// temp variables for true image within child image array
+	int trueChildAHeight, trueChildaWidth;
+	unsigned char **trueChildAImage; // allocate memory while detecting image dynamically
 	
-	int input[8] = {0};
-	int intermediate[8] = {0};
-	
+	// helper function to search for true child image in original child image (store in trueChildImage, modify dynamically)
+
+	// temp variables for hole A in parent image within parent image array
+	int holeA_height, holeA_width;
+	int holeA_origin[2] = {0};
+
+	// helper function to find hole A in parent image
 	for (int i = 0; i < height; i++)
 	{
 		for (int j = 0; j < width; j++)
 		{
-			// center pixel to be changed
-			int X = buildInput((unsigned char ***)sourceImageData, input, height, width, i, j);			
-
-			// run input through first filter and build intermediate array
-			int M = filterOne(X, input, intermediate);
-
-			// run intermediate array through 2nd filter
-			int P = filterTwo(M, intermediate);
-
-			// calculate output
-			if (X && (!M || P)) destImageData[i][j][0] = 255;
-			else destImageData[i][j][0] = 0;;
+			
 		}
 	}
 

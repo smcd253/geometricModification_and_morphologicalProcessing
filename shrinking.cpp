@@ -117,9 +117,7 @@ int main(int argc, char *argv[])
 	FILE *file;
 	int BytesPerPixel;
 	int width, height;
-	int select;
-    int th;
-	
+
 	// Check for proper syntax
 	if (argc < 3)
 	{
