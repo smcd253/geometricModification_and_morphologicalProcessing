@@ -51,39 +51,34 @@ int buildInput(unsigned char ***sourceImageData, int* inputArr, int height, int 
 
 }
 
-int filterOne(int X, int *inputArr, int *intermediateArr)
+int filterOne(unsigned char ***sourceImageData, int height, int width, int X, int *inputArr, int *intermediateArr)
 {
-	int maskMatch = 0;
+	int maskMatch = 1;
     if (X == 1)
     {
         for (int msk = 0; msk < NUM_COND_MASKS; msk++)
         {
-            int thisMaskMatch = 1;
             for (int i = 0; i < 8; i++)
             {
 				// if no match, break and compare to next mask
                 if (*(inputArr + i) != condSMasks[msk][i])
                 {
-					thisMaskMatch = 0;
+					maskMatch = 0;
 					break;
                 }
             }
-			// if this mask is a hit, then register with overall hit tracker
-            maskMatch |= thisMaskMatch;
-
-			// if mask hit, throw into intermediate array
-			if (thisMaskMatch)
-			{
-				printf("intermediateArr[] = {");
-				for (int i = 0; i< 8; i++)
-				{
-					*(intermediateArr + i) = *(inputArr + i); // throw matched 1s in intermediate array
-					printf("%d,", *(intermediateArr + i));
-				}
-				printf("}\n");
-
-			}
         }	
+		// if mask hit, run mask filter on surrounding pixels
+		if (maskMatch)
+		{
+			for (int i = 0; i< 8; i++)
+			{
+				int perifInput[9] = {0};
+				perifInput[9] = buildInput((unsigned char ***)sourceImageData, perifInput, height, width, i, j);
+				*(intermediateArr + i) = *(inputArr + i); // throw matched 1s in intermediate array
+			}
+
+		}
     }
 	return maskMatch;	
 }
@@ -166,7 +161,7 @@ int main(int argc, char *argv[])
 			int X = buildInput((unsigned char ***)sourceImageData, input, height, width, i, j);			
 
 			// run input through first filter and build intermediate array
-			int M = filterOne(X, input, intermediate);
+			int M = filterOne((unsigned char ***)sourceImageData, height, width, X, input, intermediate);
 
 			// run intermediate array through 2nd filter
 			int P = filterTwo(M, intermediate);
