@@ -18,3 +18,6 @@ B = 2*(#4-connected) + (#8-connected)
 
 Problem 2q TODO:
 1. Shrinking: Implement all masks for 
+
+Questions
+Problem 2a (shrinking): 

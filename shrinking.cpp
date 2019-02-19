@@ -39,7 +39,7 @@ int buildInput(unsigned char ***sourceImageData, int* inputArr, int height, int 
     pixels[5] = zeroPad((unsigned char ***)sourceImageData, height, width, i, j, 1, -1);
     pixels[6] = zeroPad((unsigned char ***)sourceImageData, height, width, i, j, 1, 0);
     pixels[7] = zeroPad((unsigned char ***)sourceImageData, height, width, i, j, 1, 1);
-    pixels[8] = zeroPad((unsigned char ***)sourceImageData, height, width, i, j, 0, 0);
+    pixels[8] = zeroPad((unsigned char ***)sourceImageData, height, width, i, j, 0, 0); // center pixel to be returnd by function
 
     for (int i = 0; i < 8; i++)
     {	
@@ -75,9 +75,9 @@ int filterOne(int X, int *inputArr, int *intermediateArr)
 			if (thisMaskMatch)
 			{
 				printf("intermediateArr[] = {");
-				for (int i = 0; i< 8; i++)
+				for (int i = 0; i < 8; i++)
 				{
-					*(intermediateArr + i) = *(inputArr + i); // throw matched 1s in intermediate array
+					*(intermediateArr + i) = *(inputArr + i); // ????????????????????????????????
 					printf("%d,", *(intermediateArr + i));
 				}
 				printf("}\n");
