@@ -4,17 +4,35 @@
 
 using namespace std;
 
-void findHole(unsigned char ***sourceImageData, unsigned char **destImageData, int height, int width)
+void findCornerCoords(unsigned char ***sourceImageData, unsigned char **destImageData, int height, int width, int startingCorner)
 {
-	for (int j = 0; j < width; j++)
+	switch(startingCorner)
 	{
-		for (int i = 0; i < height; i++)
-		{
-			while (*(((unsigned char *)sourceImageData + i * width) + j) == 255)
+		// start at corner 1 of image to find upper left hand corner of piece
+		case 1:
+			for (int j = 0; j < width; j++)
 			{
+				for (int i = 0; i < height; i++)
+				{
+					while (*(((unsigned char *)sourceImageData + i * width) + j) == 255)
+					{
 
+					}
+				}
 			}
-		}
+		break;
+		
+		// start at corner 2 of image to find lower left hand corner of piece
+		case 2:
+		break;
+		
+		// start at corner 3 of image to find lower right hand corner of piece		
+		case 3:
+		break;
+		
+		// start at corner 4 of image to find upper right hand corner of piece	
+		case 4:
+		break;
 	}
 }
 

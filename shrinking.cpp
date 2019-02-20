@@ -1,9 +1,8 @@
-// input: ./shrinking HW3_images/pattern1.raw HW3_images/pattern1-shrink.raw 1 375 375
+// input: ./shrinking HW3_images/pattern1.raw HW3_images/pattern1-shrink.raw
 
 #include "shrinking.hpp"
 
 using namespace std;
-
 
 int zeroPad(unsigned char ***sourceImageData, int height, int width, int i, int j, int nh, int nw)
 {
@@ -48,47 +47,55 @@ int buildInput(unsigned char ***sourceImageData, int* inputArr, int height, int 
     }
     if (pixels[8] > 0) return 1;
     else return 0;
-
 }
 
-int filterOne(unsigned char ***sourceImageData, int height, int width, int X, int *inputArr, int *intermediateArr)
+int filterHelper(int *inputArr, int numMasks)
+{
+	for (int msk = 0; msk < numMasks; msk++)
+	{
+		int maskMatch = 1;
+		for (int i = 0; i < 8; i++)
+		{
+			// if no match, break and compare to next mask
+			// to handle both cond mask and uncond mask lookup
+			if (*(inputArr + i) != (numMasks == NUM_COND_MASKS) ? condSMasks[msk][i] : uncondSTMasks[msk][i])
+			{
+				maskMatch = 0;
+			}
+		}
+		if(maskMatch)
+			return 1;
+	}	
+	return 0;
+}
+
+int filterOne(unsigned char ***sourceImageData, int height, int width, int i, int j, int X, int *inputArr, int *intermediateArr)
 {
 	int maskMatch = 1;
     if (X == 1)
     {
-        for (int msk = 0; msk < NUM_COND_MASKS; msk++)
-        {
-            for (int i = 0; i < 8; i++)
-            {
-				// if no match, break and compare to next mask
-                if (*(inputArr + i) != condSMasks[msk][i])
-                {
-					maskMatch = 0;
-					break;
-                }
-            }
-        }	
+        if(!filterHelper(inputArr, NUM_COND_MASKS))
+		{
+			maskMatch = 0;
+		}
 		// if mask hit, run mask filter on surrounding pixels
 		if (maskMatch)
 		{
-			for (int i = 0; i< 8; i++)
+			int perifInput[9] = {0};
+			int iterator = 0;
+			for(int n = -1; n <= 1; n++)
 			{
-<<<<<<< HEAD
-				int perifInput[9] = {0};
-				perifInput[9] = buildInput((unsigned char ***)sourceImageData, perifInput, height, width, i, j);
-				*(intermediateArr + i) = *(inputArr + i); // throw matched 1s in intermediate array
-=======
-				printf("intermediateArr[] = {");
-				for (int i = 0; i < 8; i++)
+				for (int m = -1; m<= 1; m++)
 				{
-					*(intermediateArr + i) = *(inputArr + i); // ????????????????????????????????
-					printf("%d,", *(intermediateArr + i));
+					if ((n != 0) && (m != 0)) // avoid center pixel
+					{
+						perifInput[9] = buildInput((unsigned char ***)sourceImageData, perifInput, height, width, i + n, j + m);
+						// throw result of mask match on periferal number on intermediate array
+						if(perifInput[9]) *(intermediateArr + iterator) = filterHelper(perifInput, NUM_COND_MASKS);
+						iterator++;
+					}
 				}
-				printf("}\n");
-
->>>>>>> 013c67c999e571b898b6965872516cc831e36682
 			}
-
 		}
     }
 	return maskMatch;	
@@ -96,26 +103,11 @@ int filterOne(unsigned char ***sourceImageData, int height, int width, int X, in
 
 int filterTwo(int M, int *intermediateArr)
 {
-	int maskMatch = 0;
     if (M == 1)
     {
-        for (int msk = 0; msk < NUM_UNCOND_MASKS; msk++)
-        {
-            int thisMaskMatch = 1;
-            for (int i = 0; i < 8; i++)
-            {
-				// if match, continue comparing
-                if (*(intermediateArr + i) != uncondSTMasks[msk][i])
-                {
-					thisMaskMatch = 0;
-					break;
-                }
-            }
-			// if this mask is a hit, then register with overall hit tracker
-            maskMatch |= thisMaskMatch;
-        }	
+		return filterHelper(intermediateArr, NUM_UNCOND_MASKS);
     }
-	return maskMatch;				
+	return 0;				
 }
 int main(int argc, char *argv[])
 {
@@ -137,11 +129,11 @@ int main(int argc, char *argv[])
 	else BytesPerPixel = atoi(argv[3]);
 
 	// Check if width is specified
-	if (argc < 5) width = 256;
+	if (argc < 5) width = 375;
 	else width = atoi(argv[4]);
 
 	// check if height is specified
-	if (argc < 6) height = 256;
+	if (argc < 6) height = 375;
 	else height = atoi(argv[5]);
 	
 	// Allocate source image data array
@@ -159,27 +151,25 @@ int main(int argc, char *argv[])
 	fclose(file);
 
 	///////////////////////// INSERT YOUR PROCESSING CODE HERE /////////////////////////
-	//intermediate array to hold output of first filter
-	
-	int input[8] = {0};
-	int intermediate[8] = {0};
-	
+
 	for (int i = 0; i < height; i++)
 	{
 		for (int j = 0; j < width; j++)
 		{
+			int input[8] = {0};
+			int intermediate[8] = {0};
+
 			// center pixel to be changed
 			int X = buildInput((unsigned char ***)sourceImageData, input, height, width, i, j);			
 
 			// run input through first filter and build intermediate array
-			int M = filterOne((unsigned char ***)sourceImageData, height, width, X, input, intermediate);
+			int M = filterOne((unsigned char ***)sourceImageData, height, width, i, j, X, input, intermediate);
 
 			// run intermediate array through 2nd filter
 			int P = filterTwo(M, intermediate);
 
 			// calculate output
-			if (X && (!M || P)) destImageData[i][j][0] = 255;
-			else destImageData[i][j][0] = 0;;
+			destImageData[i][j][0] = 255 * (X && (!M || P));
 		}
 	}
 
