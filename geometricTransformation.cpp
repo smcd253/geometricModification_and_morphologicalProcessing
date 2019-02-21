@@ -1,37 +1,77 @@
-// input: ./shrinking HW3_images/lighthouse.raw HW3_images/lighthouse1.raw HW3_images/lighthouseCombined.raw
+// input: 
 
 #include "geometricModification.hpp"
 
 using namespace std;
 
-void findCornerCoords(unsigned char ***sourceImageData, unsigned char **destImageData, int height, int width, int startingCorner)
+int cornerCoordinates[2] = {0}; // for use with local variable
+
+int findCornerCoords(unsigned char ***sourceImageData, int height, int width, int corner)
 {
-	switch(startingCorner)
+	switch(corner)
 	{
-		// start at corner 1 of image to find upper left hand corner of piece
+		// find corner 1 by scanning left to right
 		case 1:
 			for (int j = 0; j < width; j++)
 			{
 				for (int i = 0; i < height; i++)
 				{
-					while (*(((unsigned char *)sourceImageData + i * width) + j) == 255)
+					if (*(((unsigned char *)sourceImageData + i * width) + j) != 255)
 					{
-
+						cornerCoordinates[0] = i;
+						cornerCoordinates[1] = j;
+						return 0;
 					}
 				}
 			}
 		break;
 		
-		// start at corner 2 of image to find lower left hand corner of piece
+		// find corner 2 by scanning top to bottom
 		case 2:
+			for (int i = 0; i < height; i++)
+			{
+				for (int j = 0; j < width; j++)	
+				{
+					if (*(((unsigned char *)sourceImageData + i * width) + j) != 255)
+					{
+						cornerCoordinates[0] = i;
+						cornerCoordinates[1] = j;
+						return 0;
+					}
+				}
+			}
 		break;
 		
-		// start at corner 3 of image to find lower right hand corner of piece		
+		// find corner 3 by right to left		
 		case 3:
+			for (int j = width - 1; j >= 0; j--)
+			{
+				for (int i = 0; i < height; i++)
+				{
+					if (*(((unsigned char *)sourceImageData + i * width) + j) != 255)
+					{
+						cornerCoordinates[0] = i;
+						cornerCoordinates[1] = j;
+						return 0;
+					}
+				}
+			}
 		break;
 		
-		// start at corner 4 of image to find upper right hand corner of piece	
+		// find corner 4 by scanning bottom to top
 		case 4:
+			for (int i = height - 1; i >= 0; i--)
+			{
+				for (int j = width - 1; j >= 0; j--)
+				{
+					if (*(((unsigned char *)sourceImageData + i * width) + j) != 255)
+					{
+						cornerCoordinates[0] = i;
+						cornerCoordinates[1] = j;
+						return 0;
+					}
+				}
+			}
 		break;
 	}
 }
@@ -91,34 +131,26 @@ int main(int argc, char *argv[])
 	fclose(file);
 
 	///////////////////////// INSERT YOUR PROCESSING CODE HERE /////////////////////////
-	// temp variables for true image within child image array
-	int trueChildAHeight, trueChildaWidth;
-	unsigned char **trueChildAImage; // allocate memory while detecting image dynamically
-	
-	// helper function to search for true child image in original child image (store in trueChildImage, modify dynamically)
-
-	// temp variables for hole A in parent image within parent image array
-	int holeA_height, holeA_width;
-	int holeA_origin[2] = {0};
-
+	int cornerCoordinates_childA[4][2] = {0};
 	// helper function to find hole A in parent image
-	for (int i = 0; i < height; i++)
+	for (int i = 0; i < 4; i++)
 	{
-		for (int j = 0; j < width; j++)
-		{
-			
-		}
+		findCornerCoords((unsigned char ***)childA_imageData, childA_height, childA_width, i + 1);
+		cornerCoordinates_childA[i][0] = cornerCoordinates[0];
+		cornerCoordinates_childA[i][1] =  cornerCoordinates[1];
+
+		printf("corner %d = {%d, %d}\n", i + 1, cornerCoordinates_childA[i][0], cornerCoordinates_childA[i][1]);
 	}
 
-	// Write image data (filename specified by second argument) from image data matrix
-	if (!(file=fopen(argv[2],"wb"))) 
-	{
-		cout << "Cannot open file: " << argv[2] << endl;
-		exit(1);
-	}
+	// // Write image data (filename specified by second argument) from image data matrix
+	// if (!(file=fopen(argv[2],"wb"))) 
+	// {
+	// 	cout << "Cannot open file: " << argv[2] << endl;
+	// 	exit(1);
+	// }
 
-	fwrite(destImageData, sizeof(unsigned char), height*width*BytesPerPixel, file);
-	fclose(file);
+	// fwrite(destImageData, sizeof(unsigned char), height*width*BytesPerPixel, file);
+	// fclose(file);
 
 	return 0;
 }
