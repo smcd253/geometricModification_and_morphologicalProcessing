@@ -89,9 +89,9 @@ int filterOne(unsigned char ***sourceImageData, int height, int width, int i, in
 				{
 					if ((n != 0) && (m != 0)) // avoid center pixel
 					{
-						perifInput[9] = buildInput((unsigned char ***)sourceImageData, perifInput, height, width, i + n, j + m);
+						perifInput[8] = buildInput((unsigned char ***)sourceImageData, perifInput, height, width, i + n, j + m);
 						// throw result of mask match on periferal number on intermediate array
-						if(perifInput[9]) *(intermediateArr + iterator) = filterHelper(perifInput, NUM_COND_MASKS);
+						if(perifInput[8]) *(intermediateArr + iterator) = filterHelper(perifInput, NUM_COND_MASKS);
 						iterator++;
 					}
 				}
@@ -170,6 +170,8 @@ int main(int argc, char *argv[])
 
 			// calculate output
 			destImageData[i][j][0] = 255 * (X && (!M || P));
+			if(X == 1)
+				printf("X | M | P = %d | %d | %d\n", X, M, P);
 		}
 	}
 
