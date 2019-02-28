@@ -20,7 +20,7 @@ int findCornerCoords(unsigned char ***sourceImageData, int height, int width, in
 					{
 						cornerCoordinates[0] = i;
 						cornerCoordinates[1] = j;
-						return 0;
+						return 1;
 					}
 				}
 			}
@@ -36,7 +36,7 @@ int findCornerCoords(unsigned char ***sourceImageData, int height, int width, in
 					{
 						cornerCoordinates[0] = i;
 						cornerCoordinates[1] = j;
-						return 0;
+						return 1;
 					}
 				}
 			}
@@ -52,7 +52,7 @@ int findCornerCoords(unsigned char ***sourceImageData, int height, int width, in
 					{
 						cornerCoordinates[0] = i;
 						cornerCoordinates[1] = j;
-						return 0;
+						return 1;
 					}
 				}
 			}
@@ -68,12 +68,13 @@ int findCornerCoords(unsigned char ***sourceImageData, int height, int width, in
 					{
 						cornerCoordinates[0] = i;
 						cornerCoordinates[1] = j;
-						return 0;
+						return 1;
 					}
 				}
 			}
 		break;
 	}
+	return 0;
 }
 
 int main(int argc, char *argv[])
@@ -132,14 +133,42 @@ int main(int argc, char *argv[])
 
 	///////////////////////// INSERT YOUR PROCESSING CODE HERE /////////////////////////
 	int cornerCoordinates_childA[4][2] = {0};
-	// helper function to find hole A in parent image
+	// find coordinates of all 4 corners
 	for (int i = 0; i < 4; i++)
 	{
-		findCornerCoords((unsigned char ***)childA_imageData, childA_height, childA_width, i + 1);
+		if (!findCornerCoords((unsigned char ***)childA_imageData, childA_height, childA_width, i + 1))
+			printf("corner %d not found\n", i + 1);
+
 		cornerCoordinates_childA[i][0] = cornerCoordinates[0];
-		cornerCoordinates_childA[i][1] =  cornerCoordinates[1];
+		cornerCoordinates_childA[i][1] = cornerCoordinates[1];
 
 		printf("corner %d = {%d, %d}\n", i + 1, cornerCoordinates_childA[i][0], cornerCoordinates_childA[i][1]);
+	}
+
+	// calculate angle between corner 4 and corner 3 (in anticipation of rotating c4-c3 edge to 0 deg, i.e. clockwise)
+	float rise = abs(cornerCoordinates_childA[3][0] - cornerCoordinates_childA[2][0]);
+	float run = abs(cornerCoordinates_childA[3][1] - cornerCoordinates_childA[2][1]);
+	float theta = atan2f(rise,run);
+
+	printf("theta = %f\n", theta); 
+
+	// rotate image
+	for (int i = 0; i < height; i++)
+	{
+		for (int j = 0; j < width; j++)
+		{
+			// calculate new u and v values using matrix multiplcation
+			// u = x*cos(theta) + y*sin(theta)
+			int u = (int)((float)j * cosf(theta) + (float)i * sinf(theta));
+			// v = x*-sin(theta) + y*cos(theta)
+			int v = (int)(-1*(float)j * sinf(theta) + (float)i * cosf(theta));
+
+			if ((i > height/2 - 10 && i < height/2 + 10) && (j > width/2 -10 && j < width/2 + 10))
+			{
+				printf("{i,j} = {%d,%d}\n", i, j);
+				printf("{v,u} = {%d,%d}\n", v, u);
+			}
+		}
 	}
 
 	// // Write image data (filename specified by second argument) from image data matrix

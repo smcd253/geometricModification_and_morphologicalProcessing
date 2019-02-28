@@ -4,16 +4,39 @@
 
 using namespace std;
 
-int zeroPad(unsigned char ***sourceImageData, int height, int width, int i, int j, int nh, int nw)
+unsigned char zeroPad(unsigned char ***sourceImageData, int height, int width, int i, int j, int nh, int nw)
 {
 	if(i + nh >= 0)
 	{
-		if (i + nh < height - 1)
+		if (i + nh < height)
 		{
 			if(j + nw >= 0)
 			{
-				if (j + nw < width - 1)
+				if (j + nw < width)
 					return *(((unsigned char *)sourceImageData + (i + nh)*width) + (j + nw));
+				else
+					return 0;
+			}
+			else
+				return 0;
+		}
+		else
+			return 0;
+	}
+	else
+		return 0;
+}
+
+int zeroPad_int(int **mMap, int height, int width, int i, int j, int nh, int nw)
+{
+	if(i + nh >= 0)
+	{
+		if (i + nh <= height)
+		{
+			if(j + nw >= 0)
+			{
+				if (j + nw < width)
+					return *(((int *)mMap + (i + nh)*width) + (j + nw));
 				else
 					return 0;
 			}
@@ -49,6 +72,21 @@ int buildInput(unsigned char ***sourceImageData, int* inputArr, int height, int 
     else return 0;
 }
 
+int buildInput_int(int **mMap, int* inputArr, int height, int width, int i, int j)
+{
+	*(inputArr + 0) = zeroPad_int((int **)mMap, height, width, i, j, 0, 1);
+    *(inputArr + 1) = zeroPad_int((int **)mMap, height, width, i, j, -1, 1);
+    *(inputArr + 2) = zeroPad_int((int **)mMap, height, width, i, j, -1, 0);
+    *(inputArr + 3) = zeroPad_int((int **)mMap, height, width, i, j, -1, -1);
+    *(inputArr + 4) = zeroPad_int((int **)mMap, height, width, i, j, 0, -1);
+    *(inputArr + 5) = zeroPad_int((int **)mMap, height, width, i, j, 1, -1);
+    *(inputArr + 6) = zeroPad_int((int **)mMap, height, width, i, j, 1, 0);
+    *(inputArr + 7) = zeroPad_int((int **)mMap, height, width, i, j, 1, 1);
+    *(inputArr + 8) = zeroPad_int((int **)mMap, height, width, i, j, 0, 0); // center pixel to be returnd by function
+
+    return *(inputArr + 8);
+}
+
 int filterHelper(int *inputArr, int numMasks)
 {
 	for (int msk = 0; msk < numMasks; msk++)
@@ -69,7 +107,7 @@ int filterHelper(int *inputArr, int numMasks)
 	return 0;
 }
 
-int filterOne(unsigned char ***sourceImageData, int height, int width, int i, int j, int X, int *inputArr, int *intermediateArr)
+int filterOne(int X, int *inputArr)
 {
 	int maskMatch = 1;
     if (X == 1)
@@ -77,25 +115,6 @@ int filterOne(unsigned char ***sourceImageData, int height, int width, int i, in
         if(!filterHelper(inputArr, NUM_COND_MASKS))
 		{
 			maskMatch = 0;
-		}
-		// if mask hit, run mask filter on surrounding pixels
-		if (maskMatch)
-		{
-			int perifInput[9] = {0};
-			int iterator = 0;
-			for(int n = -1; n <= 1; n++)
-			{
-				for (int m = -1; m<= 1; m++)
-				{
-					if ((n != 0) && (m != 0)) // avoid center pixel
-					{
-						perifInput[8] = buildInput((unsigned char ***)sourceImageData, perifInput, height, width, i + n, j + m);
-						// throw result of mask match on periferal number on intermediate array
-						if(perifInput[8]) *(intermediateArr + iterator) = filterHelper(perifInput, NUM_COND_MASKS);
-						iterator++;
-					}
-				}
-			}
 		}
     }
 	return maskMatch;	
@@ -109,6 +128,7 @@ int filterTwo(int M, int *intermediateArr)
     }
 	return 0;				
 }
+
 int main(int argc, char *argv[])
 {
 	// Define file pointer and variables
@@ -150,28 +170,40 @@ int main(int argc, char *argv[])
 	fread(sourceImageData, sizeof(unsigned char), height*width*BytesPerPixel, file);
 	fclose(file);
 
-	int _mMap[height][width] = {0};
 	///////////////////////// INSERT YOUR PROCESSING CODE HERE /////////////////////////
+	int iMap[height][width];
+	int mMap[height][width];
+	
+	// build intermediate array by mask matching every binarized pixel in the input image matrix
 	for (int i = 0; i < height; i++)
 	{
 		for (int j = 0; j < width; j++)
 		{
 			int input[8] = {0};
-			int intermediate[8] = {0};
-
+			
 			// center pixel to be changed
-			int X = buildInput((unsigned char ***)sourceImageData, input, height, width, i, j);			
+			// X value goes into iMap matrix
+			iMap[i][j] = buildInput((unsigned char ***)sourceImageData, input, height, width, i, j);			
 
 			// run input through first filter and build intermediate array
-			int M = filterOne((unsigned char ***)sourceImageData, height, width, i, j, X, input, intermediate);
+			// M value goes into mMap matrix
+			mMap[i][j] = filterOne(iMap[i][j], input);
+		}
+	}
+
+	// build final output array by mask matching every value in the mMap matrix
+	for (int i = 0; i < height; i++)
+	{
+		for (int j = 0; j < width; j++)
+		{
+			int intermediate[8] = {0};
+			int M = buildInput_int((int **)mMap, intermediate, height, width, i, j);
 
 			// run intermediate array through 2nd filter
 			int P = filterTwo(M, intermediate);
 
 			// calculate output
-			destImageData[i][j][0] = 255 * (X && (!M || P));
-			// if(X == 1)
-			// 	printf("X | M | P = %d | %d | %d\n", X, M, P);
+			destImageData[i][j][0] = 255 * (iMap[i][j] && (!M || P));
 		}
 	}
 
