@@ -77,11 +77,6 @@ int findCornerCoords(unsigned char ***sourceImageData, int height, int width, in
 	return 0;
 }
 
-int inPiece(unsigned char ***sourceImageData, int **cornerCoords)
-{
-	// define area 
-	return 0;
-}
 int main(int argc, char *argv[])
 {
 	// Define file pointer and variables
@@ -146,23 +141,46 @@ int main(int argc, char *argv[])
 
 	printf("theta = %f\n", theta); 
 
-	// rotate image
-	for (int i = 0; i < childA_height; i++)
+	// throw result into new array
+	// height = sqrt[(Xc2 - Xc3)^2 + (Yc2 - Yc3)^2]
+	int extracted_height = sqrtf(powf(cornerCoordinates_childA[1][0] - cornerCoordinates_childA[2][0],2)
+								+ powf(cornerCoordinates_childA[1][1] - cornerCoordinates_childA[2][1],2));
+	// width = sqrt[(Xc1 - Xc2)^2 + (Yc1 - Yc2)^2]
+	int extracted_width = sqrtf(powf(cornerCoordinates_childA[0][0] - cornerCoordinates_childA[1][0],2)
+								+ powf(cornerCoordinates_childA[0][1] - cornerCoordinates_childA[1][1],2));
+	printf("new image dimensions {width,height} = {%d,%d}\n", extracted_width, extracted_height);
+	
+	unsigned char extractedImageData[extracted_height][extracted_width];
+	
+	// rotate image around center (reverse mapping)
+	int x_center = 0.5 * (cornerCoordinates_childA[0][0] + cornerCoordinates_childA[2][0]);
+	int y_center = 0.5 * (cornerCoordinates_childA[0][1] + cornerCoordinates_childA[2][1]);
+	for (int v = 0; v < childA_height; v++)
 	{
-		for (int j = 0; j < childA_width; j++)
+		for (int u = 0; u < childA_width; u++)
 		{
 			// calculate new u and v values by multiplying x,y,1 mat with rotation mat
-			// origin = corner 4 {}
-			// u = x*cos(theta) + y*sin(theta)
-			int u = (int)((float)(j - cornerCoordinates_childA[3][0]) * cosf(theta) + (float)(cornerCoordinates_childA[3][1] - i) * sinf(theta)) + cornerCoordinates_childA[3][0];
-			// v = x*-sin(theta) + y*cos(theta)
-			int v = (int)(-1*(float)(j - cornerCoordinates_childA[3][0]) * sinf(theta) + (float)(cornerCoordinates_childA[3][1] - i) * cosf(theta)) + cornerCoordinates_childA[3][1];
+			// x = (u-x_origin)*cos(theta) + (y_origin-v)*sin(theta) + x_origin
+			float x = (float)(u - x_center) * cosf(theta) - (float)(v - y_center) * sinf(theta) + x_center;
+			// y = x*-sin(theta) + y*cos(theta)
+			float y = (float)(u - x_center) * sinf(theta) + (float)(v - y_center) * cosf(theta) + y_center;
 
-			if ((u < 256) && (v < 256))
-			{
-				if(childA_imageData[i][j][0])
-					destImageData[v][u][0] = childA_imageData[i][j][0];
-			}
+			// bilinear interpolate source image
+			float weight_x = x - floorf(x);
+			float weight_y = y - floorf(y);
+			float weightMag = sqrtf(powf(weight_x,2) + powf(weight_y,2));
+			int xFloor = (int)x;
+			int xCeiling = (int)ceilf(x);
+			int yFloor = (int)y;
+			int yCeiling = (int)ceilf(y);
+
+			if(x < 256 && y < 256)
+				destImageData[v][u][0] = (unsigned char)(0.25 * (
+										(1-weightMag) * (float)childA_imageData[xFloor][yFloor][0] + 
+										(1-weightMag) * (float)childA_imageData[xFloor][yCeiling][0] + 
+										(1-weightMag) * (float)childA_imageData[xCeiling][yFloor][0] + 
+										weightMag * (float)childA_imageData[xCeiling][yCeiling][0]
+										));
 		}
 	}
 
