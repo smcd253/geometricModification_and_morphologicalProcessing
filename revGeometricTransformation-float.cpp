@@ -100,7 +100,7 @@ int main(int argc, char *argv[])
 	// Allocate parent image data arrray
 	unsigned char parentImageData[height][width][BytesPerPixel];
 	// Allocate dest image data array
-	unsigned char destImageData[childA_height][childA_width][BytesPerPixel];
+	unsigned char rotatedImageData[childA_height][childA_width][BytesPerPixel];
 
 	// Read parent image (filename specified by first argument) into image data matrix
 	if (!(file=fopen(argv[1],"rb"))) 
@@ -155,6 +155,9 @@ int main(int argc, char *argv[])
 	// rotate image around center (reverse mapping)
 	int x_center = 0.5 * (cornerCoordinates_childA[0][0] + cornerCoordinates_childA[2][0]);
 	int y_center = 0.5 * (cornerCoordinates_childA[0][1] + cornerCoordinates_childA[2][1]);
+
+	// new corners for extracted image
+	int cornerCoordinates_extracted[4][2] = {0};
 	for (int v = 0; v < childA_height; v++)
 	{
 		for (int u = 0; u < childA_width; u++)
@@ -164,6 +167,17 @@ int main(int argc, char *argv[])
 			float x = (float)(u - x_center) * cosf(theta) - (float)(v - y_center) * sinf(theta) + x_center;
 			// y = x*-sin(theta) + y*cos(theta)
 			float y = (float)(u - x_center) * sinf(theta) + (float)(v - y_center) * cosf(theta) + y_center;
+
+			// check to see if x and y correspond to a corner from the source image
+			// if so, mark u and v as the same corner and use this to build an image
+			for (int i = 0; i < 4; i++)
+			{
+				if((int)x == cornerCoordinates_childA[i][0] && (int)x == cornerCoordinates_childA[i][1])
+				{
+					cornerCoordinates_extracted[i][0] = u;
+					cornerCoordinates_extracted[i][1] = v;
+				}
+			}
 
 			// bilinear interpolate source image
 			float weight_x = x - floorf(x);
@@ -175,33 +189,24 @@ int main(int argc, char *argv[])
 			int yCeiling = (int)ceilf(y);
 
 			if(x < 256 && y < 256)
-				destImageData[v][u][0] = (unsigned char)(0.25 * (
-										(1-weightMag) * (float)childA_imageData[xFloor][yFloor][0] + 
-										(1-weightMag) * (float)childA_imageData[xFloor][yCeiling][0] + 
-										(1-weightMag) * (float)childA_imageData[xCeiling][yFloor][0] + 
-										weightMag * (float)childA_imageData[xCeiling][yCeiling][0]
+				rotatedImageData[v][u][0] = (unsigned char)(0.25 * (
+										childA_imageData[xFloor][yFloor][0] + 
+										childA_imageData[xFloor][yCeiling][0] + 
+										childA_imageData[xCeiling][yFloor][0] + 
+										childA_imageData[xCeiling][yCeiling][0]
 										));
 		}
 	}
 
-	// clean up image with bilinear interpolation
+	// extract corrected image from rotated image
 	// for (int i = 0; i < childA_height; i++)
 	// {
 	// 	for (int j = 0; j < childA_width; j++)
 	// 	{
-	// 		if(!destImageData[i][j][0])
-	// 		{
-	// 			destImageData[i][j][0] = (unsigned char)(0.25 * (
-	// 									(float)destImageData[i][j + 1][0] + 
-	// 									(float)destImageData[i][j - 1][0] + 
-	// 									(float)destImageData[i - 1][j][0] + 
-	// 									(float)destImageData[i + 1][j][0]
-	// 									));
-	// 		}
+			
 	// 	}
 	// }
 	
-
 	// Write image data (filename specified by second argument) from image data matrix
 	if (!(file=fopen(argv[3],"wb"))) 
 	{
@@ -209,7 +214,7 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-	fwrite(destImageData, sizeof(unsigned char), height*width*BytesPerPixel, file);
+	fwrite(rotatedImageData, sizeof(unsigned char), height*width*BytesPerPixel, file);
 	fclose(file);
 
 	return 0;

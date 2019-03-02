@@ -158,6 +158,8 @@ int main(int argc, char *argv[])
 	
 	// Allocate source image data array
 	unsigned char sourceImageData[height][width][BytesPerPixel];
+	// Allocate intermediate image data array
+	unsigned char intermediateImageData[height][width][BytesPerPixel];
 	// Allocate dest image data array
 	unsigned char destImageData[height][width][1];
 
@@ -171,42 +173,65 @@ int main(int argc, char *argv[])
 	fclose(file);
 
 	///////////////////////// INSERT YOUR PROCESSING CODE HERE /////////////////////////
-	int iMap[height][width];
-	int mMap[height][width];
-	
-	// build intermediate array by mask matching every binarized pixel in the input image matrix
-	for (int i = 0; i < height; i++)
+	int runFlag = 1;
+	int roundNum = 0;
+	while(runFlag)
 	{
+		int iMap[height][width];
+		int mMap[height][width];	
+		// build intermediate array by mask matching every binarized pixel in the input image matrix
 		for (int j = 0; j < width; j++)
 		{
-			int input[8] = {0};
-			
-			// center pixel to be changed
-			// X value goes into iMap matrix
-			iMap[i][j] = buildInput((unsigned char ***)sourceImageData, input, height, width, i, j);			
+			for (int i = 0; i < height; i++)
+			{
+				int input[8] = {0};
+				
+				// center pixel to be changed
+				// X value goes into iMap matrix
+				iMap[i][j] = buildInput((unsigned char ***)sourceImageData, input, height, width, i, j);			
 
-			// run input through first filter and build intermediate array
-			// M value goes into mMap matrix
-			mMap[i][j] = filterOne(iMap[i][j], input);
+				// run input through first filter and build intermediate array
+				// M value goes into mMap matrix
+				mMap[i][j] = filterOne(iMap[i][j], input);
+			}
 		}
-	}
 
-	// build final output array by mask matching every value in the mMap matrix
-	for (int i = 0; i < height; i++)
-	{
+		// build final output array by mask matching every value in the mMap matrix
 		for (int j = 0; j < width; j++)
 		{
-			int intermediate[8] = {0};
-			int M = buildInput_int((int **)mMap, intermediate, height, width, i, j);
+			for (int i = 0; i < height; i++)
+			{
+				int intermediate[8] = {0};
+				int M = buildInput_int((int **)mMap, intermediate, height, width, i, j);
+				
+				// run intermediate array through 2nd filter
+				int P = filterTwo(M, intermediate);
 
-			// run intermediate array through 2nd filter
-			int P = filterTwo(M, intermediate);
-
-			// calculate output
-			destImageData[i][j][0] = 255 * (iMap[i][j] && (!M || P));
+				// calculate output
+				intermediateImageData[i][j][0] = 255 * (iMap[i][j] && (!M || P));
+			}
 		}
-	}
 
+		// check to see if image has changed, if not, exit loop
+		// allocate data to destImageData
+		int similar = 1;
+		for (int j = 0; j < width; j++)
+		{
+			for (int i = 0; i < height; i++)
+			{
+				if(intermediateImageData[i][j][0] != sourceImageData[i][j][0])
+				{
+					printf("round %d: different at {%d,%d}\n", roundNum, i, j);
+					sourceImageData[i][j][0] = intermediateImageData[i][j][0];
+					similar = 0;
+				}
+				destImageData[i][j][0] = sourceImageData[i][j][0];
+			}
+		}
+
+		if(similar) runFlag = 0;
+		else roundNum++;
+	}
 	// Write image data (filename specified by second argument) from image data matrix
 	if (!(file=fopen(argv[2],"wb"))) 
 	{
