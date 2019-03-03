@@ -195,7 +195,7 @@ int main(int argc, char *argv[])
 				mMap[i][j] = filterOne(iMap[i][j], input);
 			}
 		}
-
+		
 		// build final output array by mask matching every value in the mMap matrix
 		for (int j = 0; j < width; j++)
 		{

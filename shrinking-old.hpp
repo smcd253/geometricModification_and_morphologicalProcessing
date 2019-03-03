@@ -37,7 +37,6 @@ int condSMasks[NUM_COND_MASKS][8] =
 	{1,1,1,1,0,1,1,1}, {1,1,1,1,1,1,0,1}, {0,1,1,1,1,1,1,1}, {1,1,0,0,1,1,1,1}
 };
 
-
 int uncondSTMasks[NUM_UNCOND_MASKS][8] = 
 {
 	// spur (2)

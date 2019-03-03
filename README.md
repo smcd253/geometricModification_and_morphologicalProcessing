@@ -25,7 +25,6 @@ Problem 2a:
 3. Once this is done, run M0-M7 through the 2nd filter against conditional masks
 4. take 2
     1. create M map before running through P filter
-    
 
 Problem 1a (transform):
 1. rotate image to nearest 90deg
@@ -33,3 +32,10 @@ Problem 1a (transform):
 Questions
 Problem 2a (shrinking): 
 
+TODO 3/2
+1. Create automated mask generator using MDABC
+2. Implement with shrinking
+3. revGeometricTransformation-float.cpp - create new image of exact dimensions using corners and edge lengths
+4. Use corner detection from image to grab hole from parent image
+5. scale extracted image to hole dimensions
+6. place image in hole
