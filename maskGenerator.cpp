@@ -5,18 +5,19 @@ using namespace std;
 // call from j = 0
 unsigned char dComboGenerator(unsigned char *dSequence, int numDs, int i, int j)
 {
-    if (j < i)
+    if (j > i)
     {
-        if (j == numDs - 1) return !(*dSequence + j);
-        return !*dSequence + j | dComboGenerator(dSequence, numDs, i, j + 1);
+        if (j == numDs - 1) return !*(dSequence + j);
+        return !*(dSequence + j) | dComboGenerator(dSequence, numDs, i, j + 1);
     }
     else
     {
-        if (j == numDs - 1) return (*dSequence + j);
-        return *dSequence + j | dComboGenerator(dSequence, numDs, i, j + 1); 
+        if (j == numDs - 1) return *(dSequence + j);
+        return *(dSequence + j) | dComboGenerator(dSequence, numDs, i, j + 1); 
     }
     
 }
+
 int main(int argc, char *argv[])
 {
     // unconditional masks
@@ -32,7 +33,6 @@ int main(int argc, char *argv[])
     // keep track of place in output mask array
     int blockPointer = 0;
     // loop through all mask char sequences
-    int _m;
     for (int m = 0; m < NUM_UNCOND_MASK_TEMPLATES; m++)
     {
         // loop through individual mask to count number of Ds
@@ -42,7 +42,7 @@ int main(int argc, char *argv[])
         int abcFlag = 0;
 
         // keep byte of Ds to track binary sequence
-        unsigned char _dTracker;
+        unsigned char _dTracker = 0b00000000;
         // make an array of binary numbers to check to see if a certain D is active in any given loop
         unsigned char _activeDs[8] = {0};
 
@@ -65,7 +65,7 @@ int main(int argc, char *argv[])
                 abFlag = 1;
             }
         }
-        // printf("mask %d: Ds: %d, ABs: %d, ABCs: %d\n", m + 1, numDs, abFlag, abcFlag);
+        printf("mask %d: Ds: %d, ABs: %d, ABCs: %d\n", m + 1, numDs, abFlag, abcFlag);
 
         printf("Mask %d dTracker = ", m + 1);
         for (int i = 0; i < 8; i++) 
@@ -76,6 +76,17 @@ int main(int argc, char *argv[])
 
         // build an array dLocations that contains only the active dLocations of length numDs
         unsigned char dLocations[numDs];
+        int activateArray[numDs][numDs];
+        for (int i = 0; i < numDs; i++)
+        {
+            for(int j = 0; j < numDs; j++)
+            {
+                if (j >= i)
+                    activateArray[i][j] = 1;
+                else activateArray[i][j] = 0;
+            }
+        }
+        
         int d = 0;
         for (int i = 0; i < 8; i++)
         {
@@ -87,173 +98,202 @@ int main(int argc, char *argv[])
         }
         
         // build an array with all possible d combinations of 
-        int dCombos = (int)pow(numDs,2);
+        int dCombos = (int)pow(2,numDs);
+        printf("number d combos = %d\n", dCombos);
         unsigned char possibleDCombos[dCombos];
-        
+        for (int i = 0; i < dCombos; i++)
+            possibleDCombos[i] = 0;
+        d = 0;
+
+        // loop through activate array and build permutations to activate different Ds in input array
         for (int i = 0; i < numDs; i++)
         {
-            for(int j = 0; j < numDs; j++)
+            while(next_permutation(activateArray[i], activateArray[i] + numDs))
             {
-                possibleDCombos[d] = dComboGenerator(dLocations, numDs, numDs - i, 0);
-                printf("possibleDCombos[%d] = ", d);
-                for (int i = 0; i < 8; i++) 
+                for (int j = 0; j < numDs; j++)
                 {
-                    printf("%d", !!((possibleDCombos[d] << i) & 0x80));
-                }
-                printf("\n");
+                    possibleDCombos[d] |= activateArray[i][j] * dLocations[j];
+                };   
                 d++;
+            } 
+            for (int j = 0; j < numDs; j++)
+            {
+                possibleDCombos[d] |= activateArray[i][j] * dLocations[j];
+            }
+            d++;       
+        } 
+        for (int i = 0; i < dCombos; i++)
+        {
+            printf("possibleDCombos[%d] = ", i);
+            for (int j = 0; j < 8; j++) 
+            {
+                printf("%d", !!((possibleDCombos[i] << j) & 0x80));
+            }
+            printf("\n");
+        }    
+        
+       
+        // keep byte of ABs to track binary sequence
+        unsigned char _abTracker = 0b00000011;
+        unsigned char ab_aActive = 0b00000010;
+        unsigned char ab_bActive = 0b00000001;
 
-                // rotate input and perform again
-                unsigned char temp = dLocations[0];
-                for (int f = 0; f < numDs; f++)
+        // keep byte of ABCs to track binary sequence
+        unsigned char _abcTracker = 0b00000111;
+        unsigned char abc_aActive = 0b00000100;
+        unsigned char abc_bActive = 0b00000010;
+        unsigned char abc_cActive = 0b00000001;
+
+        // allocate blocksize based on number of variations in mask
+        int blockSize = 1;
+        if(abFlag)
+        {
+            blockSize *= 3;
+        }
+        else if (abcFlag)
+        {
+            blockSize *= 7;
+        }
+        if(numDs)
+            blockSize *= dCombos;
+
+        printf("Mask %d numVariations: %d\n", m + 1, blockSize);
+        numGenMasks += blockSize;
+
+        printf("Mask %d Variations:\n", m + 1);
+        int variationNum = 1;
+        // loop throuh masks and drop variations into output
+        // keep track of each D and make sure you're going through all combinations
+
+        for (int i = 0; i < dCombos; i++)
+        {
+            // assign temp vals for every variation
+            unsigned char abTracker = _abTracker;
+            unsigned char abcTracker = _abcTracker;
+
+            if (abFlag)
+            {
+                for (int j = 0; j < 3; j++)
                 {
-                    dLocations[f] = dLocations[(numDs - 1) - f];
+                    for (int l = 0; l < 8; l++)
+                    {
+                        if(uncondMaskTemplates[m][l] == 'A')
+                        {
+                            if(!!((abcTracker << 6) & 0x80))
+                                uncondMasks_ST[blockPointer][l] = 1;
+                            else
+                                uncondMasks_ST[blockPointer][l] = 0;
+                        }
+                        else if (uncondMaskTemplates[m][l] == 'B')
+                        {
+                            if(!!((abcTracker << 7) & 0x80))
+                                uncondMasks_ST[blockPointer][l] = 1;
+                            else
+                                uncondMasks_ST[blockPointer][l] = 0;
+                        }
+                        // M cases
+                        else if(uncondMaskTemplates[m][l] == 'M')
+                        {
+                            uncondMasks_ST[blockPointer][l] = 1;
+                        }
+                        // 0 cases
+                        else if (uncondMaskTemplates[m][l] == 0) 
+                            uncondMasks_ST[blockPointer][l] = 0;
+                        // D cases
+                        else if (uncondMaskTemplates[m][l] == 'D')
+                        {
+                            if(!!((possibleDCombos[i] << l) & 0x80)) 
+                                uncondMasks_ST[blockPointer][l] = 1;
+                            else
+                                uncondMasks_ST[blockPointer][l] = 0;
+                        }
+                    }
+                    abTracker--;
+                    blockPointer++;
                 }
-                dLocations[numDs - 1] = temp;
+            }
+            else if(abcFlag)
+            {
+                for (int j = 0; j < 7; j++)
+                {
+                    for (int l = 0; l < 8; l++)
+                    {
+                        if(uncondMaskTemplates[m][l] == 'A')
+                        {
+                            if(!!((abcTracker << 5) & 0x80))
+                                uncondMasks_ST[blockPointer][l] = 1;
+                            else
+                                uncondMasks_ST[blockPointer][l] = 0;
+                        }
+                        else if (uncondMaskTemplates[m][l] == 'B')
+                        {
+                            if(!!((abcTracker << 6) & 0x80))
+                                uncondMasks_ST[blockPointer][l] = 1;
+                            else
+                                uncondMasks_ST[blockPointer][l] = 0;
+                        }
+                        else if (uncondMaskTemplates[m][l] == 'C')
+                        {
+                            if(!!((abcTracker << 7) & 0x80))
+                                uncondMasks_ST[blockPointer][l] = 1;
+                            else
+                                uncondMasks_ST[blockPointer][l] = 0;
+                        }
+                        // M cases
+                        else if(uncondMaskTemplates[m][l] == 'M')
+                        {
+                            uncondMasks_ST[blockPointer][l] = 1;
+                        }
+                        // 0 cases
+                        else if (uncondMaskTemplates[m][l] == 0) 
+                            uncondMasks_ST[blockPointer][l] = 0;
+                        // D cases
+                        else if (uncondMaskTemplates[m][l] == 'D')
+                        {
+                            if(!!((possibleDCombos[i] << l) & 0x80)) 
+                                uncondMasks_ST[blockPointer][l] = 1;
+                            else
+                                uncondMasks_ST[blockPointer][l] = 0;
+                        }
+                    }
+                    abcTracker--;
+                    blockPointer++;
+                }
+            }
+            else
+            {   
+                for (int l = 0; l < 8; l++)
+                {
+                    // M cases
+                    if(uncondMaskTemplates[m][l] == 'M')
+                    {
+                        uncondMasks_ST[blockPointer][l] = 1;
+                    }
+                    // 0 cases
+                    else if (uncondMaskTemplates[m][l] == 0) 
+                        uncondMasks_ST[blockPointer][l] = 0;
+                    // D cases
+                    else if (uncondMaskTemplates[m][l] == 'D')
+                    {
+                        if(!!((possibleDCombos[i] << l) & 0x80)) 
+                            uncondMasks_ST[blockPointer][l] = 1;
+                        else
+                            uncondMasks_ST[blockPointer][l] = 0;
+                    }
+                }
+                blockPointer++;
             }
         }
-        
-    }    
-    //     // keep byte of ABs to track binary sequence
-    //     unsigned char _abTracker = 0b00000011;
-    //     unsigned char ab_aActive = 0b00000010;
-    //     unsigned char ab_bActive = 0b00000001;
-
-    //     // keep byte of ABCs to track binary sequence
-    //     unsigned char _abcTracker = 0b00000111;
-    //     unsigned char abc_aActive = 0b00000100;
-    //     unsigned char abc_bActive = 0b00000010;
-    //     unsigned char abc_cActive = 0b00000001;
-
-    //     // allocate blocksize based on number of variations in mask
-    //     int blockSize = 1;
-    //     if(abFlag)
-    //     {
-    //         blockSize *= 3;
-    //     }
-    //     else if (abcFlag)
-    //     {
-    //         blockSize *= 7;
-    //     }
-    //     if(numDs)
-    //         blockSize *= pow(2, numDs);
-
-    //     printf("Mask %d numVariations: %d\n", m + 1, blockSize);
-    //     numGenMasks += blockSize;
-
-    //     printf("Mask %d Variations:\n", m + 1);
-    //     int variationNum = 1;
-    //     // loop throuh masks and drop variations into output
-    //     // keep track of each D and make sure you're going through all combinations
-
-    //     for (int i = 0; i < blockSize; i++)
-    //     {
-    //         // assign temp vals for every variation
-    //         unsigned char dTracker = _dTracker;
-    //         unsigned char *activeDs = _activeDs;
-    //         unsigned char abTracker = _abTracker;
-    //         unsigned char abcTracker = _abcTracker;
-
-    //         printf("Variation %d:\n", i);
-    //         printf("dTracker = ");
-    //         for (int i = 0; i < 8; i++) 
-    //         {
-    //             printf("%d", !!((dTracker << i) & 0x80));
-    //         }
-    //         printf("\n");
-    //         //printf("{", i + 1);
-    //         for (int l = 0; l < 8; l++)
-    //         {
-    //             // M cases
-    //             if(uncondMaskTemplates[m][l] == 'M')
-    //             {
-    //                 uncondMasks_ST[blockPointer][l] = 1;
-    //             }
-    //             // 0 cases
-    //             else if (uncondMaskTemplates[m][l] == 0) 
-    //                 uncondMasks_ST[blockPointer][l] = 0;
-    //             // AB cases (if this is a mask containing AB with no C)
-    //             // make sure we avoid 0 case by checking to see if abTracker still +
-    //             if(abTracker)
-    //             {
-    //                 if(uncondMaskTemplates[m][l] == 'A')
-    //                 {
-    //                     if(abTracker && ab_aActive)
-    //                         uncondMasks_ST[blockPointer][l] = 1;
-    //                     else
-    //                         uncondMasks_ST[blockPointer][l] = 0;
-    //                 }
-    //                 else if (uncondMaskTemplates[m][l] == 'B')
-    //                 {
-    //                     if(abTracker && ab_bActive)
-    //                         uncondMasks_ST[blockPointer][l] = 1;
-    //                     else
-    //                         uncondMasks_ST[blockPointer][l] = 0;
-    //                 }
-    //                 abTracker--;
-    //             }
-    //             // ABC cases (if this is a mask containing ABC, and not AB)
-    //             // make sure we avoid 0 case by checking to see if abcTracker still +
-    //             else if(abcTracker)
-    //             {
-    //                 if(uncondMaskTemplates[m][l] == 'A')
-    //                 {
-    //                     if(abcTracker && abc_aActive)
-    //                         uncondMasks_ST[blockPointer][l] = 1;
-    //                     else
-    //                         uncondMasks_ST[blockPointer][l] = 0;
-    //                 }
-    //                 else if (uncondMaskTemplates[m][l] == 'B')
-    //                 {
-    //                     if(abcTracker && abc_bActive)
-    //                         uncondMasks_ST[blockPointer][l] = 1;
-    //                     else
-    //                         uncondMasks_ST[blockPointer][l] = 0;
-    //                 }
-    //                 else if (uncondMaskTemplates[m][l] == 'C')
-    //                 {
-    //                     if(abcTracker && abc_cActive)
-    //                         uncondMasks_ST[blockPointer][l] = 1;
-    //                     else
-    //                         uncondMasks_ST[blockPointer][l] = 0;
-    //                 }
-    //                 abcTracker--;
-    //             }
-    //             if(numDs)
-    //             {
-    //                 if(dTracker)
-    //                 {
-    //                     if (uncondMaskTemplates[m][l] == 'D')
-    //                     {
-    //                         if(dTracker && activeDs[l]) 
-    //                             uncondMasks_ST[blockPointer][l] = 1;
-    //                         else
-    //                             uncondMasks_ST[blockPointer][l] = 0;
-    //                     }
-    //                     dTracker--;
-    //                 }
-    //                 else
-    //                 {
-    //                     if (uncondMaskTemplates[m][l] == 'D')
-    //                     {
-    //                         uncondMasks_ST[blockPointer][l] = 0;
-    //                     }
-    //                 }
-    //             }
-    //             printf("dTracker round %d = ", l);
-    //             for (int i = 0; i < 8; i++) 
-    //             {
-    //                 printf("%d", !!((dTracker << i) & 0x80));
-    //             }
-    //             printf("\n");
-    //             // print result of check
-    //             //printf("%d,",uncondMasks_ST[blockPointer][l]);
-    //         }
-    //         //printf("}\n");
-    //     }
-    // }
-    // printf("blockPointer = %d\n", blockPointer);
-    // printf("numGenMasks = %d\n", numGenMasks);   
+    }
+    for (int i = 0; i < blockPointer; i++)
+    {
+        printf("uncondMasks_ST[%d] = {", i);
+        for (int l = 0; l < 8; l++)
+            printf("%d,", uncondMasks_ST[i][l]);
+        printf("}\n");
+    }
+    printf("blockPointer = %d\n", blockPointer);
+    printf("numGenMasks = %d\n", numGenMasks);   
     
     return 0;
 }

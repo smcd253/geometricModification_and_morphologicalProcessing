@@ -1,19 +1,42 @@
 // input: ./shrinking HW3_images/pattern1.raw HW3_images/pattern1-shrink.raw
 
-#include "shrinking.hpp"
+#include "shrinking-old.hpp"
 
 using namespace std;
 
-int zeroPad(unsigned char ***sourceImageData, int height, int width, int i, int j, int nh, int nw)
+unsigned char zeroPad(unsigned char ***sourceImageData, int height, int width, int i, int j, int nh, int nw)
 {
 	if(i + nh >= 0)
 	{
-		if (i + nh < height - 1)
+		if (i + nh < height)
 		{
 			if(j + nw >= 0)
 			{
-				if (j + nw < width - 1)
+				if (j + nw < width)
 					return *(((unsigned char *)sourceImageData + (i + nh)*width) + (j + nw));
+				else
+					return 0;
+			}
+			else
+				return 0;
+		}
+		else
+			return 0;
+	}
+	else
+		return 0;
+}
+
+int zeroPad_int(int **mMap, int height, int width, int i, int j, int nh, int nw)
+{
+	if(i + nh >= 0)
+	{
+		if (i + nh <= height)
+		{
+			if(j + nw >= 0)
+			{
+				if (j + nw < width)
+					return *(((int *)mMap + (i + nh)*width) + (j + nw));
 				else
 					return 0;
 			}
@@ -49,6 +72,21 @@ int buildInput(unsigned char ***sourceImageData, int* inputArr, int height, int 
     else return 0;
 }
 
+int buildInput_int(int **mMap, int* inputArr, int height, int width, int i, int j)
+{
+	*(inputArr + 0) = zeroPad_int((int **)mMap, height, width, i, j, 0, 1);
+    *(inputArr + 1) = zeroPad_int((int **)mMap, height, width, i, j, -1, 1);
+    *(inputArr + 2) = zeroPad_int((int **)mMap, height, width, i, j, -1, 0);
+    *(inputArr + 3) = zeroPad_int((int **)mMap, height, width, i, j, -1, -1);
+    *(inputArr + 4) = zeroPad_int((int **)mMap, height, width, i, j, 0, -1);
+    *(inputArr + 5) = zeroPad_int((int **)mMap, height, width, i, j, 1, -1);
+    *(inputArr + 6) = zeroPad_int((int **)mMap, height, width, i, j, 1, 0);
+    *(inputArr + 7) = zeroPad_int((int **)mMap, height, width, i, j, 1, 1);
+    *(inputArr + 8) = zeroPad_int((int **)mMap, height, width, i, j, 0, 0); // center pixel to be returnd by function
+
+    return *(inputArr + 8);
+}
+
 int filterHelper(int *inputArr, int numMasks)
 {
 	for (int msk = 0; msk < numMasks; msk++)
@@ -69,7 +107,7 @@ int filterHelper(int *inputArr, int numMasks)
 	return 0;
 }
 
-int filterOne(unsigned char ***sourceImageData, int height, int width, int i, int j, int X, int *inputArr, int *intermediateArr)
+int filterOne(int X, int *inputArr)
 {
 	int maskMatch = 1;
     if (X == 1)
@@ -77,25 +115,6 @@ int filterOne(unsigned char ***sourceImageData, int height, int width, int i, in
         if(!filterHelper(inputArr, NUM_COND_MASKS))
 		{
 			maskMatch = 0;
-		}
-		// if mask hit, run mask filter on surrounding pixels
-		if (maskMatch)
-		{
-			int perifInput[9] = {0};
-			int iterator = 0;
-			for(int n = -1; n <= 1; n++)
-			{
-				for (int m = -1; m<= 1; m++)
-				{
-					if ((n != 0) && (m != 0)) // avoid center pixel
-					{
-						perifInput[8] = buildInput((unsigned char ***)sourceImageData, perifInput, height, width, i + n, j + m);
-						// throw result of mask match on periferal number on intermediate array
-						if(perifInput[8]) *(intermediateArr + iterator) = filterHelper(perifInput, NUM_COND_MASKS);
-						iterator++;
-					}
-				}
-			}
 		}
     }
 	return maskMatch;	
@@ -109,6 +128,7 @@ int filterTwo(int M, int *intermediateArr)
     }
 	return 0;				
 }
+
 int main(int argc, char *argv[])
 {
 	// Define file pointer and variables
@@ -138,6 +158,8 @@ int main(int argc, char *argv[])
 	
 	// Allocate source image data array
 	unsigned char sourceImageData[height][width][BytesPerPixel];
+	// Allocate intermediate image data array
+	unsigned char intermediateImageData[height][width][BytesPerPixel];
 	// Allocate dest image data array
 	unsigned char destImageData[height][width][1];
 
@@ -151,30 +173,65 @@ int main(int argc, char *argv[])
 	fclose(file);
 
 	///////////////////////// INSERT YOUR PROCESSING CODE HERE /////////////////////////
-
-	for (int i = 0; i < height; i++)
+	int runFlag = 1;
+	int roundNum = 0;
+	while(runFlag)
 	{
+		int iMap[height][width];
+		int mMap[height][width];	
+		// build intermediate array by mask matching every binarized pixel in the input image matrix
 		for (int j = 0; j < width; j++)
 		{
-			int input[8] = {0};
-			int intermediate[8] = {0};
+			for (int i = 0; i < height; i++)
+			{
+				int input[8] = {0};
+				
+				// center pixel to be changed
+				// X value goes into iMap matrix
+				iMap[i][j] = buildInput((unsigned char ***)sourceImageData, input, height, width, i, j);			
 
-			// center pixel to be changed
-			int X = buildInput((unsigned char ***)sourceImageData, input, height, width, i, j);			
-
-			// run input through first filter and build intermediate array
-			int M = filterOne((unsigned char ***)sourceImageData, height, width, i, j, X, input, intermediate);
-
-			// run intermediate array through 2nd filter
-			int P = filterTwo(M, intermediate);
-
-			// calculate output
-			destImageData[i][j][0] = 255 * (X && (!M || P));
-			if(X == 1)
-				printf("X | M | P = %d | %d | %d\n", X, M, P);
+				// run input through first filter and build intermediate array
+				// M value goes into mMap matrix
+				mMap[i][j] = filterOne(iMap[i][j], input);
+			}
 		}
-	}
+		
+		// build final output array by mask matching every value in the mMap matrix
+		for (int j = 0; j < width; j++)
+		{
+			for (int i = 0; i < height; i++)
+			{
+				int intermediate[8] = {0};
+				int M = buildInput_int((int **)mMap, intermediate, height, width, i, j);
+				
+				// run intermediate array through 2nd filter
+				int P = filterTwo(M, intermediate);
 
+				// calculate output
+				intermediateImageData[i][j][0] = 255 * (iMap[i][j] && (!M || P));
+			}
+		}
+
+		// check to see if image has changed, if not, exit loop
+		// allocate data to destImageData
+		int similar = 1;
+		for (int j = 0; j < width; j++)
+		{
+			for (int i = 0; i < height; i++)
+			{
+				if(intermediateImageData[i][j][0] != sourceImageData[i][j][0])
+				{
+					printf("round %d: different at {%d,%d}\n", roundNum, i, j);
+					sourceImageData[i][j][0] = intermediateImageData[i][j][0];
+					similar = 0;
+				}
+				destImageData[i][j][0] = sourceImageData[i][j][0];
+			}
+		}
+
+		if(similar) runFlag = 0;
+		else roundNum++;
+	}
 	// Write image data (filename specified by second argument) from image data matrix
 	if (!(file=fopen(argv[2],"wb"))) 
 	{

@@ -2,6 +2,7 @@
 #include <iostream>
 #include <stdlib.h>
 #include <math.h>
+#include <algorithm>
 
 #define NUM_COND_MASKS 58
 

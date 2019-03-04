@@ -1,41 +1,28 @@
-HW3 - Spencer McDonough
+////////////////////////////////////
+Spencer McDonough
+6341617166
+shmcdono@usc.edu
 
+EE569 Homework #3
+March 3rd, 2019
+////////////////////////////////////
 
-Problem 2 Notes
-1. Defects are any holes in white region that need to be corrected back to white
-2. Rice grain type is defined by each grouping
+Compilation Instructions:
+Problem 1a
+g++ extractChild.cpp -o extractChild
+./extractChild HW3_images/lighthouse1.raw HW3_images/lighthouse1_extracted.raw 1 0 1
+./extractChild HW3_images/lighthouse2.raw HW3_images/lighthouse2_extracted.raw 1 0 0
+./extractChild HW3_images/lighthouse3.raw HW3_images/lighthouse3_extracted.raw 0 1 0
+g++ placeChild.cpp -o placeChild
+./placeChild HW3_images/lighthouse.raw HW3_images/lighthouse1_extracted.raw HW3_images/lighthouse_filled.raw 112 108 1
+./placeChild HW3_images/lighthouse_filled.raw HW3_images/lighthouse2_extracted.raw HW3_images/lighthouse_filled.raw 143 142 2
+./placeChild HW3_images/lighthouse_filled.raw HW3_images/lighthouse3_extracted.raw HW3_images/lighthouse_filled.raw 209 214 3
 
-Bond
-4-connected:
-010
-101
-010
-8-connected:
-101
-000
-101
-B = 2*(#4-connected) + (#8-connected)
-
-Problem 2q TODO:
-1. Shrinking: Implement all masks for 
-
-Problem 2a:
-1. make sure you are exclusively matching with masks (not looking for masks INSIDE input)
-2. recursively match every pixel around X (X0-X7) with conditional masks and adjust output accordingly (this is how you build M0-M7)
-3. Once this is done, run M0-M7 through the 2nd filter against conditional masks
-4. take 2
-    1. create M map before running through P filter
-
-Problem 1a (transform):
-1. rotate image to nearest 90deg
-2. child image pieces are too big for hole --> build vector of outer edge and match with vector of inner edge of hole
-Questions
-Problem 2a (shrinking): 
-
-TODO 3/2
-1. Create automated mask generator using MDABC
-2. Implement with shrinking
-3. revGeometricTransformation-float.cpp - create new image of exact dimensions using corners and edge lengths
-4. Use corner detection from image to grab hole from parent image
-5. scale extracted image to hole dimensions
-6. place image in hole
+Problem 2a
+g++ maskGenerator.cpp -o maskGenerator
+./maskGenerator
+g++ shrinking.cpp -o shrinking
+./shrinking HW3_images/pattern1.raw HW3_images/pattern1-shrink.raw
+./shrinking HW3_images/pattern2.raw HW3_images/pattern2-shrink.raw
+./shrinking HW3_images/pattern3.raw HW3_images/pattern3-shrink.raw
+./shrinking HW3_images/pattern4.raw HW3_images/pattern4-shrink.raw
